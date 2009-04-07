@@ -1,0 +1,61 @@
+Converse
+========
+
+Overview
+--------
+
+Mail should be like a conversation, where you are free to leave when ever you want. The
+idea that someone can invite you to a conversation without your choice is bad enough,
+and this still makes that possible - but that you cannot remove yourself from the 
+conversation is just riduclos.
+
+Converse allows people to start conversations with you, but you are the one who is in
+control of staying in the converstation. Either because you are just no longer interested
+or simply because your part of this converstation is now complete. ( This could be used
+in interesting ways when people mail N people who need to do things by tracking who is 
+left in the conversation you can track if it is done  - probably not a ideal situation
+since people may still be interestd in progress even if they do not have work to do on
+it. )
+
+The basic idea is that a conversation is a pull not a push.. so when you are ready you
+will go and see what new conversations have been started with you, or what conversations
+have been updated.
+
+For each conversation there is only 1 thread. So that if you do your first pull on a 
+conversation after 10 people have make comments, you wlll only get 1 update with all 
+the comments in turn
+
+IDEA : Can I take this to the extreem, and say that like a real conversation, only 1 person
+       can speak at a time ( ie before you make your comment, you need to have the latest )
+       ( think committing to svn ) ?
+       
+
+When you check for an update on conversations, you will alway get all your current 
+conversation back... now for the typical mail user that is just scary.. but in truth
+that is the point.. a conversation is somethign you are trying to carry on - and this tool
+is trying to help out with the communication overload that i happening in the world. So 
+if you get back huge amt's then it is clear that you are trying to have more conversations
+that you are really able to deal with at any one time
+
+Opting out of a conversation is effectively the same as saying that you are complete.
+
+When someone opts out of a conversation - the conversation is updated and everyone nees to 
+get an updated conversation before they can carry on. This ensures that nobody is going to
+be shocked when they find that the person they were talking to is not there.
+
+Part of every conversation must be a list of everyone who is listening and everyone who has
+opted out of the mail.
+
+IDEA: Add in the idea of there being listeners and talkers... the conversation comes to a close 
+      once all the talkers have opted out, but the listeners are free to carry on... this is
+      so that people can opt out but still listen.
+      
+IDEA: Given the one go at a time idea, it is possible to keep in a db only the delta to the changes
+      that have take place - given that we can guarantee the order, so that we can easity reconstruct
+      the entire conversation easitly
+      
+Question: What does the idea of a forward mean.. is there some parent child relationship that takes
+          place..not sure if I like that since the start of the conversation now has no control
+          which is one of the things that I dont like about email... perhaps it is just a new 
+          converstation.
+

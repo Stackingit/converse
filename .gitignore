@@ -1,0 +1,8 @@
+
+*.beam
+*.beam
+/Mnesia.conversation_Server@Steve-eee/DECISION_TAB.LOG
+/Mnesia.conversation_Server@Steve-eee/LATEST.LOG
+/Mnesia.conversation_Server@Steve-eee/conversation.DAT
+/Mnesia.conversation_Server@Steve-eee/schema.DAT
+*.dump
