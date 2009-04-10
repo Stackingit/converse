@@ -104,6 +104,12 @@ optOut( ConversationId ) ->
     todo.
 
 %%=====================================================
+%% Getout of this converstation, but still listen
+%%=====================================================
+llistenOnly( ConversationId ) ->
+    todo.
+
+%%=====================================================
 %% Some Prettyness to make this look like a client
 %%=====================================================
 showConversation( Author, Listeners, Subject, Message, ConversationId ) ->
