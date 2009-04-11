@@ -26,7 +26,7 @@
 %% TODO : Find out how to put this in a hrl file and 
 %%        referenced
 %%======================================================
--record( conversation, { 
+-record( tb_conversation, { 
     id,         %% unique primary Key 
     author,     %% UserID : The person that started this %% information about the mail object
     subject,    %% string : heading for the conversation
@@ -37,7 +37,7 @@
 } ).
 
 %% Details about the user
--record( user, {
+-record( tb_user, {
     userId,                     %% primary key for the user
     name,                       %% the person
     password                    %% umm duh the password     
@@ -48,7 +48,7 @@
 %%
 %% This will be a bag table so that the primary key is user, but each
 %% listening and following mail is unqiue.
--record( userConversation, {
+-record( tb_userConversation, {
     userId,
     talkingConversation,        %% an active conversation ID
     listeningConversation       %% an listening conversation ID
@@ -60,7 +60,7 @@
 %% them for debug, I only have to update in one place
 %%=====================================================
 tables() ->
-    [ user, conversation, userConversation ].
+    [ tb_user, tb_conversation, tb_userConversation ].
 
 %%=====================================================
 %% Create the DB for the First Time.. this should be
@@ -80,27 +80,27 @@ startDB() ->
     mnesia:start(),
     %% Okay we are going to make this table a bag so that I can have
     %% multiple "mails" per conversation
-    mnesia:create_table( conversation, [ { attributes, record_info( fields, conversation ) } , 
-                                         { disc_only_copies, [ node() ] },
-                                         { type, set } ] ),
+    mnesia:create_table( tb_conversation, [ { attributes, record_info( fields, tb_conversation ) } , 
+                                            { disc_only_copies, [ node() ] },
+                                            { type, set } ] ),
                                              
     %% now for the user table
     %% we make this a set so that only userid is unique 
-    mnesia:create_table( user, [ { attributes, record_info( fields, user ) } , 
-                                 { disc_only_copies, [ node() ] },
-                                 { type, set } ] ),
+    mnesia:create_table( tb_user, [ { attributes, record_info( fields, tb_user ) } , 
+                                    { disc_only_copies, [ node() ] },
+                                    { type, set } ] ),
                                  
     %% now for the userConversation table
     %% we make this a bag so the userid is the key for all "actvie conversations" 
-    mnesia:create_table( userConversation, [ { attributes, record_info( fields, userConversation ) } , 
-                                             { disc_only_copies, [ node() ] },
-                                             { type, bag } ] ).
+    mnesia:create_table( tb_userConversation, [ { attributes, record_info( fields, tb_userConversation ) } , 
+                                                { disc_only_copies, [ node() ] },
+                                                { type, bag } ] ).
 
 %%=====================================================
 %% Add a new user 
 %%=====================================================
 addUser( Name, Password ) ->
-    UserRecord = #user{ userId={now(),node()} , name=Name, password=Password },
+    UserRecord = #tb_user{ userId={now(),node()} , name=Name, password=Password },
     F = fun() ->
             mnesia:write( UserRecord )
         end,
@@ -117,19 +117,19 @@ addConversation( Author, Subject, Message, Talkers ) ->
     AuthorId = getUserId( Author ),
     
     %% Get the userid for these people in the mail
-    TalkerUserIds = getUserIds( Talkers ),
+    TalkerUserIds = [ getUserId( TalkerName ) || TalkerName <- Talkers ],
     
     %%Define a unique conversationID
     ConversationId = {now(),node()},
     
     %% Make a new unique conversation record
-    Conversation = #conversation{ id=ConversationId, 
-                                  author=AuthorId , 
-                                  subject=Subject, 
-                                  message=Message, 
-                                  talkers=TalkerUserIds, 
-                                  time=now() },
-                                  
+    Conversation = #tb_conversation{ id=ConversationId, 
+                                     author=AuthorId , 
+                                     subject=Subject, 
+                                     message=Message, 
+                                     talkers=TalkerUserIds, 
+                                     time=now() },
+                                      
     %% Now we need to create records for each of our people
     %% involved in this conversation... since the author is just
     %% a talker who is likely to opt out last, we can add this
@@ -147,43 +147,28 @@ addConversation( Author, Subject, Message, Talkers ) ->
     mnesia:transaction(F).   
 
 %%=====================================================
-%% This will return a list full of new user records
-%% for the conversation they have been added to
+%% This will write a conversation association between
+%% a user and a conversation based on a list of usersIds
 %%=====================================================
 writeUserConversationsRecord( [UserId|RemainingIDs], ConversationId ) ->
-    UserConversationRecord = #userConversation{ userId=UserId, talkingConversation=ConversationId},
+    UserConversationRecord = #tb_userConversation{ userId=UserId, talkingConversation=ConversationId},
     mnesia:write( UserConversationRecord ),
-    writeUserConversationsRecord( RemainingIDs, ConversationId ).
+    writeUserConversationsRecord( RemainingIDs, ConversationId  );
+    
+writeUserConversationsRecord( [], ConversationId ) ->
+    %% nothing to do, just catch the base case
+    ok.
 
-%%=====================================================
+%%===================================================== 
 %% This will return the Id of a single user
 %%=====================================================
 getUserId( UserName ) ->
-    todo.
-    
-    
-%%=====================================================
-%% This will return a list of ids given a list of 
-%% list of usernames
-%%=====================================================
-getUserIds( UserName ) ->
-    todo.
-
-%%=====================================================
-%% Retrieve a Conversation by ConversationID
-%% -- hmm I dont know if I really like this anymore
-%% -- when would you ever do this.. since I always want
-%% -- to get all of them... lets leave this one for now
-%%=====================================================
-getConversation( ConversationID ) ->
-    %% Get the conversation started with this ID
     F = fun() ->
-            %%NOTE: qlc:q gives you a handle to the query
-            %%      qlc:e gives you all the answers
-            qlc:e( qlc:q( [ X || X <- mnesia:table( conversation ), X#conversation.id =:= ConversationID ] ) ) 
+            qlc:e( qlc:q( [ X#tb_user.userId || X <- mnesia:table( tb_user ), X#tb_user.name =:= UserName ] ) )
         end,
-    {atomic, Val } = mnesia:transaction( F ),
+    {atomic, Val } = mnesia:transaction(F),
     Val.
+    
     
 %%=====================================================
 %% Get any new or active conversations for the user
