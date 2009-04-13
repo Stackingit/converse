@@ -14,7 +14,7 @@
 %%======================================================
 %% Tag the file
 %%======================================================
--module(mailServer).
+-module(converseServer).
 -compile(export_all).
 -author("Stephen Bailey").
 -email("Stephen.Bailey@stackingit.com").
@@ -34,7 +34,7 @@ start() ->
 %%=====================================================
 debugStart()->    
     tracer:trace([?MODULE],[c]),
-    mailDB:startDebug(),
+    converseDB:startDebug(),
     start().
 
 %%=====================================================
@@ -54,7 +54,7 @@ loop() ->
 %% See if there are any mails that the client has waiting for him
 %%=====================================================
 getConversations( User ) ->
-    mailDB:getConversation( User ).
+    converseDB:getConversation( User ).
     
 %%=====================================================
 %% Find that message and make sure this persons is removed from that mail trail 
@@ -71,7 +71,7 @@ createNewMail( Author, Listeners, Subject, Message ) ->
     %~ {ok, File} = file:open( integer_to_list( getNewMessageID() ), [write] ),
     %~ io:format(File, "~p\n", [ { {author,Author}, {listeners,Listeners}, {subject,Subject}, {messsage,Message} } ] ),	
     %~ file:close(File).
-    mailDB:addConversation( Author, Subject, Message, Listeners ),
+    converseDB:addConversation( Author, Subject, Message, Listeners ),
     { newConversationCreated, ok }.
 	
 %%=====================================================        

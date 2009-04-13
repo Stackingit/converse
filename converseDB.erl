@@ -13,7 +13,7 @@
 %%======================================================
 %% Tag the file
 %%======================================================
--module(mailDB).
+-module(converseDB).
 -compile(export_all).
 -author("Stephen Bailey").
 -email("Stephen.Bailey@stackingit.com").

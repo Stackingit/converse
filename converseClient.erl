@@ -14,7 +14,7 @@
 %%======================================================
 %% Tag the file
 %%======================================================
--module( mailClient ).
+-module( converseClient ).
 -author("Stephen Bailey").
 -email("Stephen.Bailey@stackingit.com").
 -vsn( "0.0.0.1" ).
@@ -58,7 +58,7 @@ loop() ->
 %5 there will not be a better way :-)
 %%=====================================================
 sendServer()->
-    {conversation_server, conversation_Server@fpstebailh}.
+    {conversation_server, 'conversation_Server@Steve-eee'}.
 
 %%=====================================================
 %% Send a new message to the Listeners
