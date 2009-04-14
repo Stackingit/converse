@@ -1,2 +1,2 @@
-TITLE Converstation Server
-erl -sname conversation_Server -setCookie ABC
+TITLE Converse Server
+erl -sname converse_Server -setCookie ABC

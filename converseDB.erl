@@ -100,11 +100,32 @@ startDB() ->
 %% Add a new user 
 %%=====================================================
 addUser( Name, Password ) ->
+    %% check if this user already exists
+    case validateUser( Name ) of
+        { user, exists } ->
+            { user, already_exists };
+        { user, does_not_exist } ->
+            addUpdateUser(Name, Password );
+        ERROR -> 
+            exit( { 'converseDB:addUser', ERROR} )
+    end.
+
+%%=====================================================
+%% This will either add a new user or update an existing
+%% user
+%%=====================================================
+addUpdateUser( Name, Password ) ->
     UserRecord = #tb_user{ name=Name, userId={now(),node()} , password=Password },
     F = fun() ->
             mnesia:write( UserRecord )
         end,
-    mnesia:transaction( F ).
+        
+    case mnesia:transaction( F ) of
+        {atomic,ok} -> 
+            { user, ok };
+        Error -> 
+            exit( {'converseDB:addUser'}, Error )
+    end.
     
 %%=====================================================
 %% Validate the user exits
@@ -122,7 +143,7 @@ validateUser( Name ) ->
             exit( {'converseDB:validateUser', Reason } );
         {atomic, Result } -> 
             case Result of 
-                [] -> { user, doesNotExist };
+                [] -> { user, does_not_exist };
                 _  -> { user, exists }
             end
     end.
@@ -213,12 +234,10 @@ startDebug() ->
     
     %% sort out the Mnesia DB
     mnesia:stop(),      % make sure there is not one running already
+    mnesia:delete_schema( node() ),
     createDB(),         % create a DB for this node 
     startDB(),          % create the structure        
     
-    % nuke any data if we already had a DB set upv
-    [ mnesia:clear_table( Table ) || Table <- tables() ], 
-
     %%create some users
     addUser( "Stephen", "test"),
     addUser( "Bob", "test"),

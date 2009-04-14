@@ -23,7 +23,7 @@
 %% Start and register the process
 %%=====================================================
 start() ->
-    register( conversation_server, spawn_link( fun() -> loop() end ) ).
+    register( converse_server, spawn_link( fun() -> loop() end ) ).
 
 %%=====================================================
 %% This is here for a quick way to start

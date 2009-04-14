@@ -58,7 +58,7 @@ loop() ->
 %5 there will not be a better way :-)
 %%=====================================================
 sendServer()->
-    {conversation_server, 'conversation_Server@Steve-eee'}.
+    {converse_server, 'converse_Server@Steve-eee'}.
 
 %%=====================================================
 %% Send a new message to the Listeners
