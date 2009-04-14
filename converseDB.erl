@@ -1,4 +1,3 @@
-%%git test
 %%=====================================================
 %% Abstract
 %%
@@ -28,20 +27,20 @@
 %%        referenced
 %%======================================================
 -record( tb_conversation, { 
-    id,         %% unique primary Key 
-    author,     %% UserID : The person that started this %% information about the mail object
-    subject,    %% string : heading for the conversation
-    message,    %% string : the content 
-    talkers,     %% [userID,userID,...] people still active in the convesation
-    listeners,  %% [UserID,UserID,...] of listeners not active in the conversation
-    time        %% when the message was created 
+    id,                 %% unique primary Key 
+    author,             %% UserID : The person that started this %% information about the mail object
+    subject,            %% string : heading for the conversation
+    message,            %% string : the content 
+    talkers   = [],     %% [userID,userID,...] people still active in the convesation
+    listeners = [],     %% [UserID,UserID,...] of listeners not active in the conversation
+    time                %% when the message was created 
 } ).
 
 %% Details about the user
 -record( tb_user, {
-    userId,                     %% primary key for the user
-    name,                       %% the person
-    password                    %% umm duh the password     
+    name,                     %% primary key for the user, since the name must be unique
+    userId,                   %% the person's id so they can change their name if they want to
+    password                  %% umm duh the password     
 } ).
 
 %% This will only keep the current information, to do history  trauls, you need to hunt
@@ -51,8 +50,8 @@
 %% listening and following mail is unqiue.
 -record( tb_userConversation, {
     userId,
-    talkingConversation,        %% an active conversation ID
-    listeningConversation       %% an listening conversation ID
+    talkingConversation   = [],      %% an active conversation ID
+    listeningConversation = []       %% an listening conversation ID
 } ).
 
 %%=====================================================
@@ -101,11 +100,33 @@ startDB() ->
 %% Add a new user 
 %%=====================================================
 addUser( Name, Password ) ->
-    UserRecord = #tb_user{ userId={now(),node()} , name=Name, password=Password },
+    UserRecord = #tb_user{ name=Name, userId={now(),node()} , password=Password },
     F = fun() ->
             mnesia:write( UserRecord )
         end,
     mnesia:transaction( F ).
+    
+%%=====================================================
+%% Validate the user exits
+%%=====================================================
+validateUser( Name ) ->
+    %% Define the method to check for the user
+    F = fun() ->
+            qlc:e( qlc:q( [ X#tb_user.userId || X <- mnesia:table( tb_user ), X#tb_user.name =:= Name ] ) )            
+        end,
+    
+    %% do the lookup
+    case mnesia:transaction(F) of
+        {aborted, Reason } ->
+            %% What happen here ?? .. lets get out of here
+            exit( {'converseDB:validateUser', Reason } );
+        {atomic, Result } -> 
+            case Result of 
+                [] -> { user, doesNotExist };
+                _  -> { user, exists }
+            end
+    end.
+    
 
 %%=====================================================
 %% Save a new Conversation

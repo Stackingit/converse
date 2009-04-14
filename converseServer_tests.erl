@@ -7,10 +7,11 @@
 %% Tag the file
 %%======================================================
 -module(converseServer_tests).
+-include_lib("eunit/include/eunit.hrl").
 -author("Stephen Bailey").
 -email("Stephen.Bailey@stackingit.com").
 -vsn( "0.0.0.1" ).
--include_lib("eunit/include/eunit.hrl").
+
 
         
 %have a tests that will break once I update it, so that it reminds me to update the test

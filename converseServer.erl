@@ -7,8 +7,6 @@
 %% help with the fact that you may feel rude but hey
 %% this is just software :-)
 %%
-%% Author : Stephen Bailey
-%% Email  : Stephen.Bailey@stackingit.com
 %%=====================================================
 
 %%======================================================
