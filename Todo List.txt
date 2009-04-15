@@ -1,0 +1,27 @@
+Thing to do in the following order
+==================================
+( I just dont work on this any where near often enough for me to remember what I am supposed
+to be working on :-) )
+
+todo
+=====
+
+- create proper test since changes suck
+- make service a Genserver so that I can start the service quickly etc.
+- Get converstation update
+- Get only conversations that are still open
+- allow people who do not exist to be added to a mail so that when they are they can get
+  all the mail that they missed before they existed
+- when a user stops talking remove from db ( either to listener or entirly )
+
+ideas
+=====
+
+* Should the db be based around the user and not the conversation so that look up will
+be much faster given that it will always be queried in that context ?
+
+
+version 0.0
+====
+
+- User can add a conversation
