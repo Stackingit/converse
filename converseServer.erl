@@ -18,6 +18,7 @@
 -email("Stephen.Bailey@stackingit.com").
 -vsn( "0.0.0.1" ).
 -export( [start/0] ).
+-include( "DebugMacros.hrl" ).
 
 %%=====================================================
 %% Start and register the process
@@ -59,7 +60,7 @@ getConversations( User ) ->
 %% in future ( I guess there is nothing stopping someone adding them back in )
 %%=====================================================
 optOut( MessageId, ClientPid ) ->
-    todo.
+    ?TODO( { optOut, MessageId, ClientPid } ).
 	
 %%=====================================================
 %% Make a mail and store it for each of the listeners
@@ -76,7 +77,7 @@ createNewMail( Author, Listeners, Subject, Message ) ->
 %% Note, you cannot remove people, they must opt out if they dont want to play anymore
 %%=====================================================
 replyMail( AuthorPid, MessageID, AddListeners,  Message  )->
-    todo.
+    ?TODO( { replyMail, AuthorPid, MessageID, AddListeners,  Message }  ).
 
 %%=====================================================
 %% gets a new ID super incrementing

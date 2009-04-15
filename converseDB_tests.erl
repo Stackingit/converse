@@ -44,8 +44,13 @@ addingAUserThatAlreadyExists_test()->
 %%======================================================
 %% Check the adding of a conversation
 %%======================================================
-
-%%TODO
+%% testing when everything is perfect in the world
+startingAConversation_test()->
+    converseDB:addUser("User2","Password2"),                             % create a user to listen
+    { conversation, ok } = converseDB:addConversation("User1","Subject1","Message1",["User2"]), % add a message
+    %% check the message
+    Message = converseDB:getActiveConversations("User2"),
+    Message = { {subject="Subject"}, {author="User1"}, {message="Message1"}, {listeners=["User2"]} }.
 
 %%======================================================
 %% Clean up my scafolding Mnesia DB

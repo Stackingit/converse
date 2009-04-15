@@ -2,7 +2,7 @@
 %% Abstract
 %%
 %% This is the module that abstracts away the DB layer
-%% and make the inforamtion available from the ether
+%% and make the information available from the ether
 %%
 %% TODO: Use Mnesia now to learn it, but next look to
 %%       use CouchDB... not sure if it adds any real 
@@ -19,6 +19,7 @@
 -vsn( "0.0.0.1" ).
 %% get the query list comprehension tied in so we can use it
 -include_lib("stdlib/include/qlc.hrl").
+-include("DebugMacros.hrl").
 
 %%=====================================================
 %% Defines the DB data
@@ -186,8 +187,14 @@ addConversation( Author, Subject, Message, Talkers ) ->
             %% add the conversation to each talkers
             writeUserConversationsRecord( AllTalkerIDs, ConversationId )
         end,
+        
     %% Perform the save in a transaction
-    mnesia:transaction(F).   
+    case mnesia:transaction(F) of 
+        { atomic, ok } ->
+            { conversation, ok };
+        ERROR ->
+            exit( ERROR )
+    end.
 
 %%=====================================================
 %% This will write a conversation association between
@@ -198,7 +205,7 @@ writeUserConversationsRecord( [UserId|RemainingIDs], ConversationId ) ->
     mnesia:write( UserConversationRecord ),
     writeUserConversationsRecord( RemainingIDs, ConversationId  );
     
-writeUserConversationsRecord( [], ConversationId ) ->
+writeUserConversationsRecord( [], _ ) ->
     %% nothing to do, just catch the base case
     ok.
 
@@ -223,7 +230,9 @@ getActiveConversations( User ) ->
         qlc:e(  qlc:q( [ X || X <- mnesia:table( conversation ) ] ) )
     end,
     {atomic, Val } = mnesia:transaction( F ),
-    Val.
+    Val,
+    ?TODO( { getActiveConversation, User } ).
+    
 
 %%=====================================================
 %% Set up a debugging environment

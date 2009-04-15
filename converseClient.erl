@@ -19,9 +19,8 @@
 -email("Stephen.Bailey@stackingit.com").
 -vsn( "0.0.0.1" ).
 -export( [start/0] ).
-
-
 -compile(export_all ).
+-include("DebugMacros.hrl").
 
 %%=====================================================
 %% Get the client up and waiting for any messagse
@@ -71,7 +70,7 @@ startConversation( User, Subject, Message, Listeners )->
 %% when there is a converstation that I am involved in
 %%=====================================================
 connect() ->
-    todo.
+    ?TODO( {connect} ).
 
 %%=====================================================
 %% Ask the server is there is any more mail for me, it 
@@ -88,26 +87,21 @@ checkConversations( User ) ->
 %%=====================================================
 reply( ConversationId, Reply ) ->
     reply( ConversationId, Reply, [], [] ).
-    
-reply( ConversationId, Reply, NewListeners ) ->
-    reply( ConversationId, Reply, NewListeners, [] );
-reply( ConversationId, Reply, RemoveListeners ) ->
-    reply( ConversationId, Reply, [], RemoveListeners ).
-    
+        
 reply( ConversationId, Reply, NewListeners, RemoveListeners ) ->
-    todo.
-	
+    ?TODO( {reply, ConversationId,Reply, NewListeners, RemoveListeners } ).
+    
 %%=====================================================
 %% Getout of this converstation
 %%=====================================================
 optOut( ConversationId ) ->
-    todo.
-
+    ?TODO( {optOut, ConversationId} ).
+    
 %%=====================================================
 %% Getout of this converstation, but still listen
 %%=====================================================
-llistenOnly( ConversationId ) ->
-    todo.
+listenOnly( ConversationId ) ->
+    ?TODO( {listenOnly, ConversationId} ).
 
 %%=====================================================
 %% Some Prettyness to make this look like a client
