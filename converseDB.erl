@@ -148,52 +148,74 @@ validateUser( Name ) ->
                 _  -> { user, exists }
             end
     end.
-    
 
+%%=====================================================
+%% Validate the user password
+%%=====================================================
+validatePassword( Name, Password ) ->
+    F = fun() ->
+            qlc:e( qlc:q( [ X#tb_user.password || X <- mnesia:table( tb_user ), X#tb_user.name =:= Name ] ) )
+        end,
+        
+    case mnesia:transaction(F) of 
+        {aborted, Reason } ->
+            %% What happen here ?? .. lets get out of here
+            exit( {'converseDB:validatePassword', Reason } );
+        {atomic, [Password] } -> 
+            {validate, pass};
+        {atomic, _ } ->
+            {validate, fail}
+    end.
+    
 %%=====================================================
 %% Save a new Conversation
 %%=====================================================
-addConversation( Author, Subject, Message, Talkers ) ->
-    %% right now we are in a catch 22 we need the userid and the conversation ID but we only get these
-    %% after each other.
- 
-    %%Get our authors ID
-    AuthorId = getUserId( Author ),
-    
-    %% Get the userid for these people in the mail
-    TalkerUserIds = [ getUserId( TalkerName ) || TalkerName <- Talkers ],
-    
-    %%Define a unique conversationID
-    ConversationId = {now(),node()},
-    
-    %% Make a new unique conversation record
-    Conversation = #tb_conversation{ id=ConversationId, 
-                                     author=AuthorId , 
-                                     subject=Subject, 
-                                     message=Message, 
-                                     talkers=TalkerUserIds, 
-                                     time=now() },
-                                      
-    %% Now we need to create records for each of our people
-    %% involved in this conversation... since the author is just
-    %% a talker who is likely to opt out last, we can add this
-    %% in there now
-    AllTalkerIDs = [ TalkerUserIds | AuthorId ],
-                                  
-    %% Make the act of saving it a method
-    F = fun() ->
-            %% add the conversation
-            mnesia:write( Conversation ),
-            %% add the conversation to each talkers
-            writeUserConversationsRecord( AllTalkerIDs, ConversationId )
-        end,
-        
-    %% Perform the save in a transaction
-    case mnesia:transaction(F) of 
-        { atomic, ok } ->
-            { conversation, ok };
-        ERROR ->
-            exit( ERROR )
+addConversation( Author, Password, Subject, Message, Talkers ) ->
+    %%Validate the password - unless you are the correct person
+    %%you dont get to impersonate them !!
+    case validatePassword( Author, Password ) of
+        { validate, fail } ->
+            { conversation, authentication_failed };
+        {validate, pass } ->    
+            %%Get our authors ID
+            AuthorId = getUserId( Author ),
+            
+            %% Get the userid for these people in the mail
+            TalkerUserIds = lists:map( fun(X)-> getUserId( X ) end, Talkers ),
+            
+            %%Define a unique conversationID
+            ConversationId = {now(),node()},
+            
+            %% Make a new unique conversation record
+            Conversation = #tb_conversation{ id=ConversationId, 
+                                             author=AuthorId , 
+                                             subject=Subject, 
+                                             message=Message, 
+                                             talkers=TalkerUserIds, 
+                                             time=now() },
+                                              
+            %% Now we need to create records for each of our people
+            %% involved in this conversation... since the author is just
+            %% a talker who is likely to opt out last, we can add this
+            %% in there now
+            AllTalkerIDs = [ AuthorId | TalkerUserIds ],
+                                          
+            
+            %% Make the act of saving it a method
+            F = fun() ->
+                    %% add the conversation
+                    mnesia:write( Conversation ),
+                    %% add the conversation to each talkers
+                    writeUserConversationsRecord( AllTalkerIDs, ConversationId )
+                end,
+                
+            %% Perform the save in a transaction
+            case mnesia:transaction(F) of 
+                { atomic, ok } ->
+                    { conversation, ok };
+                ERROR ->
+                    exit( ERROR )
+            end
     end.
 
 %%=====================================================
@@ -216,23 +238,32 @@ getUserId( UserName ) ->
     F = fun() ->
             qlc:e( qlc:q( [ X#tb_user.userId || X <- mnesia:table( tb_user ), X#tb_user.name =:= UserName ] ) )
         end,
-    {atomic, Val } = mnesia:transaction(F),
+    {atomic, [Val|_]} = mnesia:transaction(F),
     Val.
     
     
 %%=====================================================
 %% Get any new or active conversations for the user
 %%=====================================================
-getActiveConversations( User ) ->
-    % look through the DB to find any conversations that 
-    % this user is still involved in and return them all
-    F = fun() ->
-        qlc:e(  qlc:q( [ X || X <- mnesia:table( conversation ) ] ) )
-    end,
-    {atomic, Val } = mnesia:transaction( F ),
-    Val,
-    ?TODO( { getActiveConversation, User } ).
-    
+getActiveConversations( User, Password ) ->
+    %%Validate the password
+    case validatePassword( User, Password ) of
+        { validate, fail } ->
+            { conversation, authentication_failed };
+        {validate, pass } ->    
+            % look through the DB to find any conversations that 
+            % this user is still involved in and return them all
+            UserId = getUserId( User ),
+            F = fun() ->
+                qlc:e(  qlc:q( [ X || X <- mnesia:table( tb_conversation )  ] ) )
+                %% TODO filter by talkers ?? 
+                %~ lists:member( UserId, X#tb_conversation.talkers )
+                end,
+            {atomic, ActiveConversations } = mnesia:transaction( F ),
+            ActiveConversations
+    end.
+            
+            
 
 %%=====================================================
 %% Set up a debugging environment
@@ -253,8 +284,8 @@ startDebug() ->
     addUser( "Sue", "test"),
     
     %%put in test data for the DB
-    addConversation( "Stephen", "Subject", "Some interseting Message", [ "Sue" , "bob" ] ),
-    addConversation( "Stephen", "test", "Testing", [ "Sue" ] ),
+    addConversation( "Stephen", "test", "Subject", "Some interseting Message", [ "Sue" , "Bob" ] ),
+    addConversation( "Stephen", "test", "test", "Testing", [ "Sue" ] ),
     
     %% get a viewing tool up to look at the DB data
     tv:start().

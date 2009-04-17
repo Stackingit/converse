@@ -42,15 +42,28 @@ addingAUserThatAlreadyExists_test()->
     { user, already_exists } = converseDB:addUser("User1","Password1"). % validate you cannot add an existing user
 
 %%======================================================
+%% Check the Password validation
+%%======================================================
+validatePassword_test() ->
+    { validate, pass } = converseDB:validatePassword("User1","Password1"),
+    { validate, fail } = converseDB:validatePassword("User1","Not the Password").
+    
+%%======================================================
 %% Check the adding of a conversation
 %%======================================================
 %% testing when everything is perfect in the world
 startingAConversation_test()->
-    converseDB:addUser("User2","Password2"),                             % create a user to listen
-    { conversation, ok } = converseDB:addConversation("User1","Subject1","Message1",["User2"]), % add a message
+    % create a user to listen
+    converseDB:addUser("User2","Password2"),                             
+    % add a message
+    { conversation, ok } = converseDB:addConversation("User1","Password1", "Subject1","Message1",["User2"]), 
     %% check the message
     Message = converseDB:getActiveConversations("User2"),
-    Message = { {subject="Subject"}, {author="User1"}, {message="Message1"}, {listeners=["User2"]} }.
+    Message = { {subject="Subject"}, {author="User1"}, {message="Message1"}, {talkers=["User2","User1"]} },
+    %% check the message for the other user
+    Message2 = converseDB:getActiveConversations("User3"),
+    Message2 = { {subject="Subject"}, {author="User1"}, {message="Message1"}, {listeners=["User2","User1"]} }.
+    
 
 %%======================================================
 %% Clean up my scafolding Mnesia DB

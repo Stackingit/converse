@@ -6,7 +6,6 @@ to be working on :-) )
 todo
 =====
 
-- create proper test since changes suck
 - make service a Genserver so that I can start the service quickly etc.
 - Get converstation update
 - Get only conversations that are still open
