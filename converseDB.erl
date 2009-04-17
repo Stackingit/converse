@@ -282,7 +282,7 @@ getConversation( ConversationId )->
             mnesia:read( tb_conversation, ConversationId )
         end,
         
-    case mnesia:transation(F) of
+    case mnesia:transaction(F) of
         {atomic, [Conversation] } ->
             Conversation;    
         Error ->

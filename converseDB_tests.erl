@@ -60,7 +60,9 @@ startingAConversation_test()->
     %% check the message
     ActiveConversations = converseDB:getActiveConversations("User2","Password2"),
     %% should be only 1 talking message and no listening
-    {{talking,[TalkingConversation]},{listening,[]}} = ActiveConversations.
+    {{talking,[ConversationId]},{listening,[]}} = ActiveConversations,
+    %%Check the conversation
+    {_,"User1","Subject1","Message1",Talkers,[],_} = converseDB:getConversation( ConversationId ).
     
 %%======================================================
 %% Clean up my scafolding Mnesia DB
