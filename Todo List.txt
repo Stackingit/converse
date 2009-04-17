@@ -12,6 +12,8 @@ todo
 - allow people who do not exist to be added to a mail so that when they are they can get
   all the mail that they missed before they existed
 - when a user stops talking remove from db ( either to listener or entirly )
+- Allow people to move to just being a listener
+- Make a web page for a client
 
 ideas
 =====

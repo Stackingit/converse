@@ -51,8 +51,8 @@
 %% listening and following mail is unqiue.
 -record( tb_userConversation, {
     userId,
-    talkingConversation   = [],      %% an active conversation ID
-    listeningConversation = []       %% an listening conversation ID
+    talker   = [],      %% an active conversation ID
+    listener = []       %% an listening conversation ID
 } ).
 
 %%=====================================================
@@ -95,7 +95,7 @@ startDB() ->
     %% we make this a bag so the userid is the key for all "actvie conversations" 
     mnesia:create_table( tb_userConversation, [ { attributes, record_info( fields, tb_userConversation ) } , 
                                                 { disc_only_copies, [ node() ] },
-                                                { type, bag } ] ).
+                                                { type, set } ] ).
 
 %%=====================================================
 %% Add a new user 
@@ -205,32 +205,42 @@ addConversation( Author, Password, Subject, Message, Talkers ) ->
             F = fun() ->
                     %% add the conversation
                     mnesia:write( Conversation ),
-                    %% add the conversation to each talkers
-                    writeUserConversationsRecord( AllTalkerIDs, ConversationId )
+                    %% update each of the users with the new conversations
+                    %% that they are now involved in
+                    [ mapUserAsTalker( UserId, ConversationId ) || UserId <- AllTalkerIDs ]
                 end,
                 
             %% Perform the save in a transaction
             case mnesia:transaction(F) of 
-                { atomic, ok } ->
+                { atomic, _ } ->
                     { conversation, ok };
                 ERROR ->
-                    exit( ERROR )
+                    exit( { 'converseDB:addConversation', ERROR } )
             end
     end.
 
 %%=====================================================
-%% This will write a conversation association between
-%% a user and a conversation based on a list of usersIds
+%% This will add a conversation ID to a particular user
 %%=====================================================
-writeUserConversationsRecord( [UserId|RemainingIDs], ConversationId ) ->
-    UserConversationRecord = #tb_userConversation{ userId=UserId, talkingConversation=ConversationId},
-    mnesia:write( UserConversationRecord ),
-    writeUserConversationsRecord( RemainingIDs, ConversationId  );
+mapUserAsTalker( UserId, ConversationId ) ->
+    F = fun() ->
+            case mnesia:read( tb_userConversation, UserId ) of
+                [] -> 
+                    %%just add a new record
+                    NewUserConversation = #tb_userConversation{ userId=UserId, talker=[ConversationId] },
+                    mnesia:write( NewUserConversation );
+                
+                [ActiveConversations] ->
+                    Talking = ActiveConversations#tb_userConversation.talker,
+                    %%now save it back
+                    UpdatedConversations = ActiveConversations#tb_userConversation{talker=[ConversationId | Talking ] },
+                    mnesia:write( UpdatedConversations )
+            end
+        end,
     
-writeUserConversationsRecord( [], _ ) ->
-    %% nothing to do, just catch the base case
-    ok.
-
+    mnesia:transaction(F).
+    
+    
 %%===================================================== 
 %% This will return the Id of a single user
 %%=====================================================
@@ -238,13 +248,13 @@ getUserId( UserName ) ->
     F = fun() ->
             qlc:e( qlc:q( [ X#tb_user.userId || X <- mnesia:table( tb_user ), X#tb_user.name =:= UserName ] ) )
         end,
-    {atomic, [Val|_]} = mnesia:transaction(F),
+    {atomic, [Val]} = mnesia:transaction(F),
     Val.
     
     
 %%=====================================================
-%% Get any new or active conversations for the user
-%%=====================================================
+%% Get any new or active conversations for the user by returning
+%% only the ID, subject and author%%=====================================================
 getActiveConversations( User, Password ) ->
     %%Validate the password
     case validatePassword( User, Password ) of
@@ -252,23 +262,38 @@ getActiveConversations( User, Password ) ->
             { conversation, authentication_failed };
         {validate, pass } ->    
             % look through the DB to find any conversations that 
-            % this user is still involved in and return them all
-            UserId = getUserId( User ),
+            % this user is still involved in and return them all),
             F = fun() ->
-                qlc:e(  qlc:q( [ X || X <- mnesia:table( tb_conversation )  ] ) )
-                %% TODO filter by talkers ?? 
-                %~ lists:member( UserId, X#tb_conversation.talkers )
+                qlc:e( qlc:q( [ { {talking, X#tb_userConversation.talker}, 
+                                  {listening, X#tb_userConversation.listener} } 
+                                || X <- mnesia:table( tb_userConversation ), 
+                                X#tb_userConversation.userId =:= getUserId( User ) ] ) )
                 end,
-            {atomic, ActiveConversations } = mnesia:transaction( F ),
+            {atomic, [ActiveConversations] } = mnesia:transaction( F ),
             ActiveConversations
     end.
             
             
+%%=====================================================
+%% This will return a complete conversation
+%%=====================================================
+getConversation( ConversationId )->
+    F = fun()->
+            mnesia:read( tb_conversation, ConversationId )
+        end,
+        
+    case mnesia:transation(F) of
+        {atomic, [Conversation] } ->
+            Conversation;    
+        Error ->
+            exit( { 'converseDB:getConversation', Error } )
+    end.
+        
 
 %%=====================================================
 %% Set up a debugging environment
 %%=====================================================
-startDebug() ->
+debugStart() ->
     %% get a tracer up for just calls
     tracer:trace([?MODULE],[c]),
     

@@ -33,7 +33,7 @@ start() ->
 %%=====================================================
 debugStart()->    
     tracer:trace([?MODULE],[c]),
-    converseDB:startDebug(),
+    converseDB:debugStart(),
     start().
 
 %%=====================================================
