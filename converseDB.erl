@@ -162,9 +162,9 @@ validatePassword( Name, Password ) ->
             %% What happen here ?? .. lets get out of here
             exit( {'converseDB:validatePassword', Reason } );
         {atomic, [Password] } -> 
-            {validate, pass};
+            {authentication, pass};
         {atomic, _ } ->
-            {validate, fail}
+            {authentication, fail}
     end.
     
 %%=====================================================
@@ -174,9 +174,7 @@ addConversation( Author, Password, Subject, Message, Talkers ) ->
     %%Validate the password - unless you are the correct person
     %%you dont get to impersonate them !!
     case validatePassword( Author, Password ) of
-        { validate, fail } ->
-            { conversation, authentication_failed };
-        {validate, pass } ->    
+        {authentication, pass } ->    
             %%Get our authors ID
             AuthorId = getUserId( Author ),
             
@@ -212,10 +210,13 @@ addConversation( Author, Password, Subject, Message, Talkers ) ->
             %% Perform the save in a transaction
             case mnesia:transaction(F) of 
                 { atomic, _ } ->
-                    { conversation, ok };
+                    { conversation, ok, ConversationId };
                 ERROR ->
                     exit( { 'converseDB:addConversation', ERROR } )
-            end
+            end;
+            
+        {AuthFail} -> AuthFail
+        
     end.
 
 %%=====================================================
@@ -241,6 +242,39 @@ mapUserAsTalker( UserId, ConversationId ) ->
         Error ->
             exit( {'converseDB:mapUserAsTalker',Error} )
         end.    
+    
+%%===================================================== 
+%% This will opt a user out of an existing conversation
+%% this is password protected
+%%=====================================================
+optOut( UserName, Password, ConversationId ) ->
+    case validatePassword( UserName, Password ) of
+        {authentication, pass } ->
+            F = fun() ->
+                    {UserId, Talker, Listener} = mnesia:read( tb_userConversation, getUserId( UserName ) ),
+                    NewTalkerList = lists:delete( ConversationId, Talker ),
+                    
+                    case ( NewTalkerList =:= Talker ) of
+                        true -> 
+                            %%check if this was even in the list
+                            { opt_out, error, not_in_conversation };
+                        false ->
+                            %%save it back
+                            UpdatedRow = #tb_userConversation{userId=UserId,talker=NewTalkerList,listener=Listener},
+                            mnesia:write(UpdatedRow)
+                    end
+                end,
+            case mnesia:transaction( F ) of
+                {atomic, _ } ->
+                    { opt_out, ok };
+                Error ->
+                    exit( {'converseDB:optOut',Error} )
+            end;
+            
+        {AuthFail} -> AuthFail
+        
+    end.
+    
     
 %%===================================================== 
 %% This will return the Id of a single user
@@ -277,9 +311,7 @@ getUserName( UserId ) ->
 getActiveConversations( User, Password ) ->
     %%Validate the password
     case validatePassword( User, Password ) of
-        { validate, fail } ->
-            { conversation, authentication_failed };
-        {validate, pass } ->    
+        {authentication, pass } ->    
             % look through the DB to find any conversations that 
             % this user is still involved in and return them all),
             F = fun() ->
@@ -289,7 +321,9 @@ getActiveConversations( User, Password ) ->
                                 X#tb_userConversation.userId =:= getUserId( User ) ] ) )
                 end,
             {atomic, [ActiveConversations] } = mnesia:transaction( F ),
-            ActiveConversations
+            ActiveConversations;
+        
+        {AuthFail} -> AuthFail
     end.
             
             
@@ -299,7 +333,6 @@ getActiveConversations( User, Password ) ->
 getConversation( ConversationId )->
     F = fun()->
             mnesia:read( tb_conversation, ConversationId )
-            %~ qlc:e( qlc:q( [ X || X <- mnesia:table(tb_conversation), X#tb_conversation.id =:= ConversationId ] ) )
         end,
         
     case mnesia:transaction(F) of

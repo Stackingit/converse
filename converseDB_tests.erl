@@ -45,8 +45,8 @@ addingAUserThatAlreadyExists_test()->
 %% Check the Password validation
 %%======================================================
 validatePassword_test() ->
-    { validate, pass } = converseDB:validatePassword("User1","Password1"),
-    { validate, fail } = converseDB:validatePassword("User1","Not the Password").
+    { authentication, pass } = converseDB:validatePassword("User1","Password1"),
+    { authentication, fail } = converseDB:validatePassword("User1","Not the Password").
     
 %%======================================================
 %% Check the adding of a conversation
@@ -56,7 +56,7 @@ startingAConversation_test()->
     % create a user to add as a happy talker
     converseDB:addUser("User2","Password2"),                             
     % add a message
-    { conversation, ok } = converseDB:addConversation("User1","Password1", "Subject1","Message1",["User2"]), 
+    { conversation, ok, ConversationId } = converseDB:addConversation("User1","Password1", "Subject1","Message1",["User2"]), 
     %% check the message
     ActiveConversations = converseDB:getActiveConversations("User2","Password2"),
     %% should be only 1 talking message and no listening
@@ -68,14 +68,29 @@ startingAConversation_test()->
       {talkers,["User1","User2"]}, {listeners,[]},
       {time,_} } = converseDB:getConversation( ConversationId ).
     
-    %%validate the talkers since there is gonig to be no guaranteed what order the
-    %%talkers will be in
-    %~ Talkers = Talkers.
+%%======================================================
+%% Check the ability to opt out of a conversation
+%%======================================================
+optOut_test()->
+    %%create some users for this conversation
+    converseDB:addUser("OptOut1","test"),
+    converseDB:addUser("OptOut2","test"),
+    %%start a conversation
+    { conversation, ok, ConversationId } = converseDB:addConversation("OptOut1","test","Subject","Message",["OptOut2"]),
+    %%get the recipient to opt out
+    { opt_out, ok } = converseDB:optOut("OptOut2","test", ConversationId ),
+    %% now check the active conversations for OptOut2 - should be empty
+    {{talking,[]}, {listening,[]} } = converseDB:getActiveConversations("OptOut2","test"),
+    %~ %% optout1 should still have this conversation
+    {{talking,[ConversationId]}, {listening,[]} } = converseDB:getActiveConversations("OptOut1","test"),
+    %%now try and opt out of one that someone is not already in
+    { opt_out, error, not_in_conversation } = converseDB:optOut("OptOut2","test", ConversationId ).
     
+
 %%======================================================
 %% Clean up my scafolding Mnesia DB
 %%======================================================    
-shutdown_test()->
-    mnesia:stop(),
-    mnesia:delete_schema( [ node() ] ).
+%~ shutdown_test()->
+    %~ mnesia:stop(),
+    %~ mnesia:delete_schema( [ node() ] ).
     
