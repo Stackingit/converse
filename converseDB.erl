@@ -186,20 +186,19 @@ addConversation( Author, Password, Subject, Message, Talkers ) ->
             %%Define a unique conversationID
             ConversationId = {now(),node()},
             
+            %%add the author as a talker
+            AllTalkerIDs = [ AuthorId | TalkerUserIds ],
+            
             %% Make a new unique conversation record
             Conversation = #tb_conversation{ id=ConversationId, 
                                              author=AuthorId , 
                                              subject=Subject, 
                                              message=Message, 
-                                             talkers=TalkerUserIds, 
+                                             talkers=AllTalkerIDs, 
                                              time=now() },
                                               
             %% Now we need to create records for each of our people
-            %% involved in this conversation... since the author is just
-            %% a talker who is likely to opt out last, we can add this
-            %% in there now
-            AllTalkerIDs = [ AuthorId | TalkerUserIds ],
-                                          
+            %% involved in this conversation... 
             
             %% Make the act of saving it a method
             F = fun() ->
@@ -221,25 +220,27 @@ addConversation( Author, Password, Subject, Message, Talkers ) ->
 
 %%=====================================================
 %% This will add a conversation ID to a particular user
+%% it is assumed that this will be run in the context of  
+%% of a transaction 
+%% hmm there must be a better way instead of having a
+%% comment which says when this should be run ??
 %%=====================================================
 mapUserAsTalker( UserId, ConversationId ) ->
-    F = fun() ->
-            case mnesia:read( tb_userConversation, UserId ) of
-                [] -> 
-                    %%just add a new record
-                    NewUserConversation = #tb_userConversation{ userId=UserId, talker=[ConversationId] },
-                    mnesia:write( NewUserConversation );
-                
-                [ActiveConversations] ->
-                    Talking = ActiveConversations#tb_userConversation.talker,
-                    %%now save it back
-                    UpdatedConversations = ActiveConversations#tb_userConversation{talker=[ConversationId | Talking ] },
-                    mnesia:write( UpdatedConversations )
-            end
-        end,
-    
-    mnesia:transaction(F).
-    
+    case mnesia:read( tb_userConversation, UserId ) of
+        [] -> 
+            %%just add a new record
+            NewUserConversation = #tb_userConversation{ userId=UserId, talker=[ConversationId] },
+            mnesia:write( NewUserConversation );
+        
+        [ActiveConversations] ->
+            Talking = ActiveConversations#tb_userConversation.talker,
+            %%now save it back
+            UpdatedConversations = ActiveConversations#tb_userConversation{talker=[ConversationId | Talking ] },
+            mnesia:write( UpdatedConversations );
+            
+        Error ->
+            exit( {'converseDB:mapUserAsTalker',Error} )
+        end.    
     
 %%===================================================== 
 %% This will return the Id of a single user
@@ -248,13 +249,31 @@ getUserId( UserName ) ->
     F = fun() ->
             qlc:e( qlc:q( [ X#tb_user.userId || X <- mnesia:table( tb_user ), X#tb_user.name =:= UserName ] ) )
         end,
-    {atomic, [Val]} = mnesia:transaction(F),
-    Val.
-    
+    case mnesia:transaction( F ) of
+        { atomic, [Id] }
+            -> Id;
+        Error ->
+            exit( {"converseDB:getUserId", Error } )
+    end.
+
+%%===================================================== 
+%% Given a userId lets get the user name
+%%=====================================================
+getUserName( UserId ) ->
+    F = fun() ->
+            qlc:e( qlc:q( [ X#tb_user.name || X <- mnesia:table( tb_user ), X#tb_user.userId =:= UserId ] ) )
+        end,
+    case mnesia:transaction( F ) of
+        { atomic, [Name] }
+            -> Name;
+        Error ->
+            exit( {"converseDB:getUserName", Error } )
+    end.
     
 %%=====================================================
 %% Get any new or active conversations for the user by returning
-%% only the ID, subject and author%%=====================================================
+%% only the ID, subject and author
+%%=====================================================
 getActiveConversations( User, Password ) ->
     %%Validate the password
     case validatePassword( User, Password ) of
@@ -280,11 +299,20 @@ getActiveConversations( User, Password ) ->
 getConversation( ConversationId )->
     F = fun()->
             mnesia:read( tb_conversation, ConversationId )
+            %~ qlc:e( qlc:q( [ X || X <- mnesia:table(tb_conversation), X#tb_conversation.id =:= ConversationId ] ) )
         end,
         
     case mnesia:transaction(F) of
-        {atomic, [Conversation] } ->
-            Conversation;    
+        %%get the conversation without the table name
+        {atomic, [ { _, ConversationId, Author, Subject, Message, Talkers, Listeners, Time } ] } ->
+            %% return a nicely name tuple with all the conversation information 
+            MakeIntoName = fun(X) -> getUserName( X ) end,
+            { {id,ConversationId}, 
+              {author,getUserName(Author)}, {subject,Subject}, {message,Message}, 
+              {talkers, lists:map(MakeIntoName,Talkers) }, 
+              {listeners, lists:map(MakeIntoName,Listeners) },
+              {time,Time} 
+            };
         Error ->
             exit( { 'converseDB:getConversation', Error } )
     end.

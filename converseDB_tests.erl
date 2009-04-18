@@ -61,8 +61,16 @@ startingAConversation_test()->
     ActiveConversations = converseDB:getActiveConversations("User2","Password2"),
     %% should be only 1 talking message and no listening
     {{talking,[ConversationId]},{listening,[]}} = ActiveConversations,
-    %%Check the conversation
-    {_,"User1","Subject1","Message1",Talkers,[],_} = converseDB:getConversation( ConversationId ).
+    
+    %%Check the conversation : ignoring the time since I cannot know that :)
+    { {id,ConversationId},
+      {author,"User1"}, {subject,"Subject1"}, {message,"Message1"},
+      {talkers,["User1","User2"]}, {listeners,[]},
+      {time,_} } = converseDB:getConversation( ConversationId ).
+    
+    %%validate the talkers since there is gonig to be no guaranteed what order the
+    %%talkers will be in
+    %~ Talkers = Talkers.
     
 %%======================================================
 %% Clean up my scafolding Mnesia DB
