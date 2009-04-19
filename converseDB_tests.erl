@@ -33,20 +33,20 @@ setup_test()->
 %% Check the adding of a user
 %%======================================================
 addingAUser_test()->
-    { user, does_not_exist } = converseDB:validateUser("User1"), % validate the user does not already exist
-    { user, ok } = converseDB:addUser("User1","Password1"),      % add him sucessfully
-    { user, exists } = converseDB:validateUser("User1").         % check that he is indeed there
+    ?assertMatch( { user, does_not_exist } , converseDB:validateUser("User1") ), % validate the user does not already exist
+    ?assertMatch( { user, ok } , converseDB:addUser("User1","Password1") ),      % add him sucessfully
+    ?assertMatch( { user, exists } , converseDB:validateUser("User1") ).         % check that he is indeed there
 
 addingAUserThatAlreadyExists_test()->
-    { user, exists } = converseDB:validateUser("User1"),                % validate our user is still there
-    { user, already_exists } = converseDB:addUser("User1","Password1"). % validate you cannot add an existing user
+    ?assertMatch( { user, exists } , converseDB:validateUser("User1") ),                % validate our user is still there
+    ?assertMatch( { user, already_exists } , converseDB:addUser("User1","Password1") ). % validate you cannot add an existing user
 
 %%======================================================
 %% Check the Password validation
 %%======================================================
 validatePassword_test() ->
-    { authentication, pass } = converseDB:validatePassword("User1","Password1"),
-    { authentication, fail } = converseDB:validatePassword("User1","Not the Password").
+    ?assertMatch( { authentication, pass } , converseDB:validatePassword("User1","Password1") ),
+    ?assertMatch( { authentication, fail } , converseDB:validatePassword("User1","Not the Password") ).
     
 %%======================================================
 %% Check the adding of a conversation
@@ -60,14 +60,14 @@ startingAConversation_test()->
     %% check the message
     ActiveConversations = converseDB:getActiveConversations("User2","Password2"),
     %% should be only 1 talking message and no listening
-    {{talking,[ConversationId]},{listening,[]}} = ActiveConversations,
+    ?assertMatch( {{talking,[ConversationId]},{listening,[]}} , ActiveConversations ),
     
     %%Check the conversation : ignoring the time since I cannot know that :)
-    { {id,ConversationId},
+    ?assertMatch( { {id,ConversationId},
       {author,"User1"}, {subject,"Subject1"}, {message,"Message1"},
       {talkers,["User1","User2"]}, {listeners,[]},
-      {time,_} } = converseDB:getConversation( ConversationId ).
-    
+      {time,_} } , converseDB:getConversation( ConversationId ) ).
+
 %%======================================================
 %% Check the ability to opt out of a conversation
 %%======================================================
@@ -78,13 +78,13 @@ optOut_test()->
     %%start a conversation
     { conversation, ok, ConversationId } = converseDB:addConversation("OptOut1","test","Subject","Message",["OptOut2"]),
     %%get the recipient to opt out
-    { opt_out, ok } = converseDB:optOut("OptOut2","test", ConversationId ),
+    ?assertMatch( { opt_out, ok } , converseDB:optOut("OptOut2","test", ConversationId ) ),
     %% now check the active conversations for OptOut2 - should be empty
-    {{talking,[]}, {listening,[]} } = converseDB:getActiveConversations("OptOut2","test"),
+    ?assertMatch( {{talking,[]}, {listening,[]} } , converseDB:getActiveConversations("OptOut2","test") ),
     %~ %% optout1 should still have this conversation
-    {{talking,[ConversationId]}, {listening,[]} } = converseDB:getActiveConversations("OptOut1","test"),
+    ?assertMatch( {{talking,[ConversationId]}, {listening,[]} } , converseDB:getActiveConversations("OptOut1","test") ),
     %%now try and opt out of one that someone is not already in
-    { opt_out, error, not_in_conversation } = converseDB:optOut("OptOut2","test", ConversationId ).
+    ?assertMatch( { opt_out, error, not_in_conversation }, converseDB:optOut("OptOut2","test", ConversationId ) ).
     
 
 %%======================================================

@@ -251,20 +251,22 @@ optOut( UserName, Password, ConversationId ) ->
     case validatePassword( UserName, Password ) of
         {authentication, pass } ->
             F = fun() ->
-                    {UserId, Talker, Listener} = mnesia:read( tb_userConversation, getUserId( UserName ) ),
+                    [ {tb_userConversation, UserId, Talker, Listener} ] = mnesia:read( tb_userConversation, getUserId( UserName ) ),
                     NewTalkerList = lists:delete( ConversationId, Talker ),
                     
                     case ( NewTalkerList =:= Talker ) of
                         true -> 
-                            %%check if this was even in the list
-                            { opt_out, error, not_in_conversation };
+                            %%check if this was even in the list if not abort
+                            mnesia:abort( { opt_out, error, not_in_conversation } );
                         false ->
                             %%save it back
                             UpdatedRow = #tb_userConversation{userId=UserId,talker=NewTalkerList,listener=Listener},
-                            mnesia:write(UpdatedRow)
-                    end
+                            mnesia:write( UpdatedRow )
+                    end 
                 end,
             case mnesia:transaction( F ) of
+                {aborted, { opt_out, error, not_in_conversation } } ->
+                    { opt_out, error, not_in_conversation };
                 {atomic, _ } ->
                     { opt_out, ok };
                 Error ->
@@ -337,7 +339,7 @@ getConversation( ConversationId )->
         
     case mnesia:transaction(F) of
         %%get the conversation without the table name
-        {atomic, [ { _, ConversationId, Author, Subject, Message, Talkers, Listeners, Time } ] } ->
+        {atomic, [ { tb_conversation, ConversationId, Author, Subject, Message, Talkers, Listeners, Time } ] } ->
             %% return a nicely name tuple with all the conversation information 
             MakeIntoName = fun(X) -> getUserName( X ) end,
             { {id,ConversationId}, 
